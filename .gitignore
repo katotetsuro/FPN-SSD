@@ -1,0 +1,10 @@
+__pycache__
+*.pkl
+.ipynb_checkpoints
+*.ipynb
+result
+data/**/*.jpg
+data/**/*.json
+*.zip
+*.swp
+.DS_Store
