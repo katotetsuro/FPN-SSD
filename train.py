@@ -112,6 +112,7 @@ def main():
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--out', default='result')
     parser.add_argument('--data_dir', type=str, default='auto')
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--resume')
     args = parser.parse_args()
 
@@ -160,7 +161,7 @@ def main():
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = training.Trainer(updater, (120000, 'iteration'), args.out)
     trainer.extend(
-        extensions.ExponentialShift('lr', 0.1, init=1e-3),
+        extensions.ExponentialShift('lr', 0.1, init=args.lr),
         trigger=triggers.ManualScheduleTrigger([80000, 100000], 'iteration'))
 
     trainer.extend(
