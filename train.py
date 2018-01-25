@@ -136,7 +136,7 @@ def main():
                 data_dir=join(args.data_dir, 'VOCdevkit/VOC2012')
                 if args.data_dir != 'auto' else args.data_dir)),
         Transform(model.coder, model.insize, model.mean))
-    train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
+    train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
 
     test = VOCBboxDataset(
         year='2007',
