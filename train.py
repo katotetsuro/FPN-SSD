@@ -107,6 +107,7 @@ def main():
     parser.add_argument('--batchsize', type=int, default=32)
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--out', default='result')
+    parser.add_argument('--data_dir', type=str, default='auto')
     parser.add_argument('--resume')
     args = parser.parse_args()
 
@@ -122,15 +123,15 @@ def main():
 
     train = TransformDataset(
         ConcatenatedDataset(
-            VOCBboxDataset(year='2007', split='trainval'),
-            VOCBboxDataset(year='2012', split='trainval')
+            VOCBboxDataset(year='2007', split='trainval', data_dir=args.data_dir),
+            VOCBboxDataset(year='2012', split='trainval', data_dir=args.data_dir)
         ),
         Transform(model.coder, model.insize, model.mean))
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
 
     test = VOCBboxDataset(
         year='2007', split='test',
-        use_difficult=True, return_difficult=True)
+        use_difficult=True, return_difficult=True, data_dir=args.data_dir)
     test_iter = chainer.iterators.SerialIterator(
         test, args.batchsize, repeat=False, shuffle=False)
 

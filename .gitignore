@@ -5,6 +5,8 @@ __pycache__
 result
 data/**/*.jpg
 data/**/*.json
+data/VOCdevkit
 *.zip
 *.swp
 .DS_Store
+*.tar
