@@ -1,6 +1,7 @@
 import argparse
 import copy
 import numpy as np
+from os.path import join
 
 import chainer
 from chainer.datasets import ConcatenatedDataset
@@ -25,7 +26,6 @@ from chainercv.links.model.ssd import resize_with_random_interpolation
 
 
 class MultiboxTrainChain(chainer.Chain):
-
     def __init__(self, model, alpha=1, k=3):
         super(MultiboxTrainChain, self).__init__()
         with self.init_scope():
@@ -35,19 +35,20 @@ class MultiboxTrainChain(chainer.Chain):
 
     def __call__(self, imgs, gt_mb_locs, gt_mb_labels):
         mb_locs, mb_confs = self.model(imgs)
-        loc_loss, conf_loss = multibox_loss(
-            mb_locs, mb_confs, gt_mb_locs, gt_mb_labels, self.k)
+        loc_loss, conf_loss = multibox_loss(mb_locs, mb_confs, gt_mb_locs,
+                                            gt_mb_labels, self.k)
         loss = loc_loss * self.alpha + conf_loss
 
-        chainer.reporter.report(
-            {'loss': loss, 'loss/loc': loc_loss, 'loss/conf': conf_loss},
-            self)
+        chainer.reporter.report({
+            'loss': loss,
+            'loss/loc': loc_loss,
+            'loss/conf': conf_loss
+        }, self)
 
         return loss
 
 
 class Transform(object):
-
     def __init__(self, coder, size, mean):
         # to send cpu, make a copy
         self.coder = copy.copy(coder)
@@ -80,8 +81,11 @@ class Transform(object):
         img, param = random_crop_with_bbox_constraints(
             img, bbox, return_param=True)
         bbox, param = transforms.crop_bbox(
-            bbox, y_slice=param['y_slice'], x_slice=param['x_slice'],
-            allow_outside_center=False, return_param=True)
+            bbox,
+            y_slice=param['y_slice'],
+            x_slice=param['x_slice'],
+            allow_outside_center=False,
+            return_param=True)
         label = label[param['index']]
 
         # 4. Resizing with random interpolatation
@@ -112,26 +116,35 @@ def main():
     args = parser.parse_args()
 
     model = FPNSSD(
-            n_fg_class=len(voc_bbox_label_names),
-            pretrained_model='imagenet')
+        n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
 
     model.use_preset('evaluate')
     train_chain = MultiboxTrainChain(model)
     if args.gpu >= 0:
         chainer.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()
-
     train = TransformDataset(
         ConcatenatedDataset(
-            VOCBboxDataset(year='2007', split='trainval', data_dir=args.data_dir),
-            VOCBboxDataset(year='2012', split='trainval', data_dir=args.data_dir)
-        ),
+            VOCBboxDataset(
+                year='2007',
+                split='trainval',
+                data_dir=join(args.data_dir, 'VOCdevkit/VOC2007')
+                if args.data_dir != 'auto' else args.data_dir),
+            VOCBboxDataset(
+                year='2012',
+                split='trainval',
+                data_dir=join(args.data_dir, 'VOCdevkit/VOC2012')
+                if args.data_dir != 'auto' else args.data_dir)),
         Transform(model.coder, model.insize, model.mean))
     train_iter = chainer.iterators.MultiprocessIterator(train, args.batchsize)
 
     test = VOCBboxDataset(
-        year='2007', split='test',
-        use_difficult=True, return_difficult=True, data_dir=args.data_dir)
+        year='2007',
+        split='test',
+        use_difficult=True,
+        return_difficult=True,
+        data_dir=join(args.data_dir, 'VOCdevkit/VOC2007')
+        if args.data_dir != 'auto' else args.data_dir)
     test_iter = chainer.iterators.SerialIterator(
         test, args.batchsize, repeat=False, shuffle=False)
 
@@ -152,17 +165,20 @@ def main():
 
     trainer.extend(
         DetectionVOCEvaluator(
-            test_iter, model, use_07_metric=True,
+            test_iter,
+            model,
+            use_07_metric=True,
             label_names=voc_bbox_label_names),
         trigger=(10000, 'iteration'))
 
     log_interval = 10, 'iteration'
     trainer.extend(extensions.LogReport(trigger=log_interval))
     trainer.extend(extensions.observe_lr(), trigger=log_interval)
-    trainer.extend(extensions.PrintReport(
-        ['epoch', 'iteration', 'lr',
-         'main/loss', 'main/loss/loc', 'main/loss/conf',
-         'validation/main/map']),
+    trainer.extend(
+        extensions.PrintReport([
+            'epoch', 'iteration', 'lr', 'main/loss', 'main/loss/loc',
+            'main/loss/conf', 'validation/main/map'
+        ]),
         trigger=log_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
