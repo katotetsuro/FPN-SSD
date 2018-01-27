@@ -18,6 +18,7 @@ from chainercv.extensions import DetectionVOCEvaluator
 from chainercv.links.model.ssd import GradientScaling
 from chainercv.links.model.ssd import multibox_loss
 from feature_pyramid_network import FPNSSD
+from chainercv.links import SSD300, SSD512
 from chainercv import transforms
 
 from chainercv.links.model.ssd import random_crop_with_bbox_constraints
@@ -108,6 +109,8 @@ class Transform(object):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--model', choices=('fpn', 'ssd300', 'ssd512'), default='fpn')
     parser.add_argument('--batchsize', type=int, default=32)
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--out', default='result')
@@ -116,8 +119,15 @@ def main():
     parser.add_argument('--resume')
     args = parser.parse_args()
 
-    model = FPNSSD(
-        n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
+    if args.model == 'ssd300':
+        model = SSD300(
+            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
+    elif args.model == 'ssd512':
+        model = SSD512(
+            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
+    elif args.model == 'fpn':
+        model = FPNSSD(
+            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
 
     model.use_preset('evaluate')
     train_chain = MultiboxTrainChain(model)
