@@ -116,6 +116,7 @@ def main():
     parser.add_argument('--out', default='result')
     parser.add_argument('--data_dir', type=str, default='auto')
     parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--init_scale', type=float, default=1e-4)
     parser.add_argument('--resume')
     args = parser.parse_args()
 
@@ -127,7 +128,7 @@ def main():
             n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
     elif args.model == 'fpn':
         model = FPNSSD(
-            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
+            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet', init_scale=args.init_scale)
 
     model.use_preset('evaluate')
     train_chain = MultiboxTrainChain(model)

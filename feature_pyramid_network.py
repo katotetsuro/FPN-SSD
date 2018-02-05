@@ -7,6 +7,7 @@ from chainer.links.model.vision.resnet import ResNet50Layers
 from chainercv.links.model.ssd import Multibox
 
 from chainercv.links.model.ssd.ssd_vgg16 import _check_pretrained_model
+from chainer import initializers
 
 # copy from https://github.com/chainer/chainercv/blob/master/chainercv/links/model/ssd/ssd_vgg16.py#L24
 _imagenet_mean = np.array((123, 117, 104)).reshape((-1, 1, 1))
@@ -16,7 +17,7 @@ class FeaturePyramidNetwork(chainer.Chain):
     insize = 300
     grids = (38, 19, 10, 5, 3, 1)
 
-    def __init__(self):
+    def __init__(self, initialW=None):
         super().__init__()
         with self.init_scope():
             # bottom up
@@ -24,22 +25,22 @@ class FeaturePyramidNetwork(chainer.Chain):
             del self.resnet.fc6
             # top layer (reduce channel)
             self.toplayer = L.Convolution2D(
-                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0)
+                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0, initialW=initialW)
 
             # conv layer for top-down pathway
-            self.conv_p4 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1)
-            self.conv_p3 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1)
-            self.conv_p2 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1)
+            self.conv_p4 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
+            self.conv_p3 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
+            self.conv_p2 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
             
-            self.conv_p7 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1)
+            self.conv_p7 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
 
             # lateral connection
             self.lat_p4 = L.Convolution2D(
-                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0)
+                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0, initialW=initialW)
             self.lat_p3 = L.Convolution2D(
-                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0)
+                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0, initialW=initialW)
             self.lat_p2 = L.Convolution2D(
-                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0)
+                in_channels=None, out_channels=256, ksize=1, stride=1, pad=0, initialW=initialW)
 
     def __call__(self, x):
         # bottom-up pathway
@@ -79,16 +80,19 @@ from chainercv.links.model.ssd import SSD
 
 
 class FPNSSD(SSD):
-    def __init__(self, n_fg_class=None, pretrained_model=None):
+    def __init__(self, n_fg_class=None, pretrained_model=None, init_scale=0.0001):
         # うまくいったらpretrained model配布しますね
         #        n_fg_class, path = _check_pretrained_model(
         #            n_fg_class, pretrained_model, self._models)
 
+        print('initializing with scale={}'.format(init_scale))
+        initializer = initializers.Normal(init_scale)
         super(FPNSSD, self).__init__(
-            extractor=FeaturePyramidNetwork(),
+            extractor=FeaturePyramidNetwork(initialW=initializer),
             multibox=Multibox(
                 n_class=n_fg_class + 1,
-                aspect_ratios=((2,), (2, 3), (2, 3), (2, 3), (2,), (2,))),
+                aspect_ratios=((2,), (2, 3), (2, 3), (2, 3), (2,), (2,)),
+                initialW=initializer),
             steps=(8, 16, 32, 64, 100, 300),
             sizes=(30, 60, 111, 162, 213, 264, 315),
             mean=_imagenet_mean)
