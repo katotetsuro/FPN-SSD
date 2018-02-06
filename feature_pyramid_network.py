@@ -4,7 +4,7 @@ import chainer.links as L
 import chainer.functions as F
 from chainer.links.model.vision.resnet import ResNet50Layers
 
-from chainercv.links.model.ssd import Multibox
+from multibox import Multibox
 
 from chainercv.links.model.ssd.ssd_vgg16 import _check_pretrained_model
 from chainer import initializers
@@ -21,7 +21,7 @@ class FeaturePyramidNetwork(chainer.Chain):
         super().__init__()
         with self.init_scope():
             # bottom up
-            self.resnet = ResNet50Layers('auto')
+            self.resnet = ResNet50Layers(None)
             del self.resnet.fc6
             # top layer (reduce channel)
             self.toplayer = L.Convolution2D(

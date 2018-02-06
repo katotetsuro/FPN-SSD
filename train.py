@@ -16,7 +16,8 @@ from chainercv.datasets import voc_bbox_label_names
 from chainercv.datasets import VOCBboxDataset
 from chainercv.extensions import DetectionVOCEvaluator
 from chainercv.links.model.ssd import GradientScaling
-from chainercv.links.model.ssd import multibox_loss
+#from chainercv.links.model.ssd import multibox_loss
+import multibox_loss
 from feature_pyramid_network import FPNSSD
 from chainercv.links import SSD300, SSD512
 from chainercv import transforms
@@ -36,7 +37,7 @@ class MultiboxTrainChain(chainer.Chain):
 
     def __call__(self, imgs, gt_mb_locs, gt_mb_labels):
         mb_locs, mb_confs = self.model(imgs)
-        loc_loss, conf_loss = multibox_loss(mb_locs, mb_confs, gt_mb_locs,
+        loc_loss, conf_loss = multibox_loss.multibox_loss(mb_locs, mb_confs, gt_mb_locs,
                                             gt_mb_labels, self.k)
         loss = loc_loss * self.alpha + conf_loss
 
@@ -170,7 +171,7 @@ def main():
             param.update_rule.add_hook(WeightDecay(0.0005))
 
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
-    trainer = training.Trainer(updater, (120000, 'iteration'), args.out)
+    trainer = training.Trainer(updater, (1, 'iteration'), args.out)
     trainer.extend(
         extensions.ExponentialShift('lr', 0.1, init=args.lr),
         trigger=triggers.ManualScheduleTrigger([80000, 100000], 'iteration'))
