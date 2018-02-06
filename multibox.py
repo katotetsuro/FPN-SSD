@@ -42,6 +42,7 @@ class Multibox(chainer.Chain):
 
         print('multibox_initial',initialW)
         if initialW is None:
+            raise ValueError('initializer required')
             initialW = initializers.LeCunUniform()
         if initial_bias is None:
             initial_bias = initializers.Zero()
@@ -84,7 +85,7 @@ class Multibox(chainer.Chain):
             mb_loc = self.loc[i](x)
             mb_loc = F.transpose(mb_loc, (0, 2, 3, 1))
             mb_loc = F.reshape(mb_loc, (mb_loc.shape[0], -1, 4))
-            print(i, F.max(mb_loc))
+            #print('p{}'.format(i+2), F.max(mb_loc))
             mb_locs.append(mb_loc)
 
             mb_conf = self.conf[i](x)
@@ -96,4 +97,5 @@ class Multibox(chainer.Chain):
         mb_locs = F.concat(mb_locs, axis=1)
         mb_confs = F.concat(mb_confs, axis=1)
 
+        #print('max of mb_locs', F.max(mb_locs))
         return mb_locs, mb_confs

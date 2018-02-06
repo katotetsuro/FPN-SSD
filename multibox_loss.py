@@ -74,19 +74,13 @@ def multibox_loss(mb_locs, mb_confs, gt_mb_locs, gt_mb_labels, k):
         z = chainer.Variable(xp.zeros((), dtype=np.float32))
         return z, z
 
-    print('0', F.max(mb_locs))
     mb_locs = F.minimum(mb_locs, xp.ones(mb_locs.shape, dtype=xp.float32) * 1e+3)
     loc_loss = F.huber_loss(mb_locs, gt_mb_locs, 1, reduce='no')
-    print('1', F.max(loc_loss))
-    loc_loss = F.minimum(loc_loss, xp.ones(loc_loss.shape, dtype=xp.float32) * 1e+3) 
-    print('2', F.max(loc_loss))
+    loc_loss = F.minimum(loc_loss, xp.ones(loc_loss.shape, dtype=xp.float32) * 1e+3)
     loc_loss = F.sum(loc_loss, axis=-1)
-    print(F.max(loc_loss))
     loc_loss *= positive.astype(loc_loss.dtype)
-    loc_loss = F.minimum(loc_loss, xp.ones(loc_loss.shape, dtype=xp.float32) * 1e+3) 
-    print(F.max(loc_loss))
+    loc_loss = F.minimum(loc_loss, xp.ones(loc_loss.shape, dtype=xp.float32) * 1e+3)
     loc_loss = F.sum(loc_loss) / n_positive
-    print(F.max(loc_loss))
 
     conf_loss = _elementwise_softmax_cross_entropy(mb_confs, gt_mb_labels)
     hard_negative = _hard_negative(conf_loss.array, positive, k)
