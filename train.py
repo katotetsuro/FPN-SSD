@@ -16,7 +16,6 @@ from chainercv.datasets import voc_bbox_label_names
 from chainercv.datasets import VOCBboxDataset
 from chainercv.extensions import DetectionVOCEvaluator
 from chainercv.links.model.ssd import GradientScaling
-from chainercv.links.model.ssd import multibox_loss
 from feature_pyramid_network import FPNSSD
 from chainercv.links import SSD300, SSD512
 from chainercv import transforms
@@ -24,6 +23,8 @@ from chainercv import transforms
 from chainercv.links.model.ssd import random_crop_with_bbox_constraints
 from chainercv.links.model.ssd import random_distort
 from chainercv.links.model.ssd import resize_with_random_interpolation
+
+from loss import multibox_loss
 
 
 class MultiboxTrainChain(chainer.Chain):
