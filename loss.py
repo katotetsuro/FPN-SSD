@@ -6,10 +6,14 @@ import chainer
 import chainer.functions as F
 
 
-def focal_loss(x, t, gamma=2, alpha=0.25):
+def focal_loss(x, t, alpha=0.25, gamma=2):
     xp = chainer.cuda.get_array_module(x)
-    t = xp.eye(x.shape[1])[t]
-    return -alpha * F.mean(F.matmul((1 - F.softmax(x))**gamma * F.log_softmax(x), t, transb=True))
+    one_hot = xp.eye(x.shape[-1])[t.array]
+    p = F.softmax(x, axis=2).array
+    pt = F.where(one_hot == 1, p, 1-p)
+    alpha = xp.where(one_hot == 1, alpha, 1-alpha)
+    losses = -F.sum(alpha * (1-pt)**gamma * F.log(pt), axis=2)
+    return F.mean(losses)
 
 
 def multibox_loss(mb_locs, mb_confs, gt_mb_locs, gt_mb_labels, k):

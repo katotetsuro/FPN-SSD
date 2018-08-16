@@ -3,10 +3,7 @@ import chainer
 import chainer.links as L
 import chainer.functions as F
 from chainer.links.model.vision.resnet import ResNet50Layers
-
 from chainercv.links.model.ssd import Multibox
-
-from chainercv.links.model.ssd.ssd_vgg16 import _check_pretrained_model
 from chainer import initializers
 
 # copy from https://github.com/chainer/chainercv/blob/master/chainercv/links/model/ssd/ssd_vgg16.py#L24
@@ -28,11 +25,15 @@ class FeaturePyramidNetwork(chainer.Chain):
                 in_channels=None, out_channels=256, ksize=1, stride=1, pad=0, initialW=initialW)
 
             # conv layer for top-down pathway
-            self.conv_p4 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
-            self.conv_p3 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
-            self.conv_p2 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
-            
-            self.conv_p7 = L.Convolution2D(None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
+            self.conv_p4 = L.Convolution2D(
+                None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
+            self.conv_p3 = L.Convolution2D(
+                None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
+            self.conv_p2 = L.Convolution2D(
+                None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
+
+            self.conv_p7 = L.Convolution2D(
+                None, 256, ksize=3, stride=1, pad=1, initialW=initialW)
 
             # lateral connection
             self.lat_p4 = L.Convolution2D(
@@ -59,17 +60,13 @@ class FeaturePyramidNetwork(chainer.Chain):
         p3 = self.conv_p3(
             F.unpooling_2d(p4, ksize=2, outsize=(
                 c3.shape[2:4])) + self.lat_p3(c3))
-        
+
         p2 = self.conv_p2(
             F.unpooling_2d(p3, ksize=2, outsize=(
                 c2.shape[2:4])) + self.lat_p2(c2))
 
-        # from paper,
-        # Here we introduce P6 only for covering a larger anchor scale of 5122.
-        # P6 is simply a stride two subsampling of P5
-        # but original SSD prepare small( at spatial ) feature maps, so I try stride=3, it produece (4, 4) feature maps.
-        p6 = F.max_pooling_2d(p5, ksize=1, stride=3)
-        
+        p6 = F.max_pooling_2d(p5, ksize=1, stride=2, cover_all=False)
+
         # adjust to SSD300(experimental)
         p7 = F.max_pooling_2d(self.conv_p7(p6), ksize=3)
 

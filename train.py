@@ -117,7 +117,7 @@ def main():
     parser.add_argument('--out', default='result')
     parser.add_argument('--data_dir', type=str, default='auto')
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--init_scale', type=float, default=1e-4)
+    parser.add_argument('--init_scale', type=float, default=1e-2)
     parser.add_argument('--resume')
     args = parser.parse_args()
 
