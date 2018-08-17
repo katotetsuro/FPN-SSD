@@ -9,7 +9,7 @@ import chainer.functions as F
 def focal_loss(x, t, alpha=0.25, gamma=2):
     xp = chainer.cuda.get_array_module(x)
     one_hot = xp.eye(x.shape[-1])[t.array]
-    p = F.softmax(x, axis=2).array
+    p = F.softmax(x, axis=2)
     pt = F.where(one_hot == 1, p, 1-p)
     alpha = xp.where(one_hot == 1, alpha, 1-alpha)
     losses = -F.sum(alpha * (1-pt)**gamma * F.log(pt), axis=2)
