@@ -14,6 +14,11 @@ from chainer.training import triggers
 
 from chainercv.datasets import voc_bbox_label_names
 from chainercv.datasets import VOCBboxDataset
+try:
+    from chainercv.datasets import coco_bbox_label_names
+    from chainercv.datasets import COCOBboxDataset
+except ImportError:
+    print('please install chainercv from master to use cocodataset')
 from chainercv.extensions import DetectionVOCEvaluator
 from chainercv.links.model.ssd import GradientScaling
 from feature_pyramid_network import FPNSSD
@@ -116,28 +121,14 @@ def main():
     parser.add_argument('--gpu', type=int, default=-1)
     parser.add_argument('--out', default='result')
     parser.add_argument('--data_dir', type=str, default='auto')
+    parser.add_argument('--dataset', choices=['voc', 'coco'], default='voc')
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--init_scale', type=float, default=1e-2)
     parser.add_argument('--resume')
     args = parser.parse_args()
 
-    if args.model == 'ssd300':
-        model = SSD300(
-            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
-    elif args.model == 'ssd512':
-        model = SSD512(
-            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet')
-    elif args.model == 'fpn':
-        model = FPNSSD(
-            n_fg_class=len(voc_bbox_label_names), pretrained_model='imagenet', init_scale=args.init_scale)
-
-    model.use_preset('evaluate')
-    train_chain = MultiboxTrainChain(model)
-    if args.gpu >= 0:
-        chainer.cuda.get_device_from_id(args.gpu).use()
-        model.to_gpu()
-    train = TransformDataset(
-        ConcatenatedDataset(
+    if args.dataset == 'voc':
+        train = ConcatenatedDataset(
             VOCBboxDataset(
                 year='2007',
                 split='trainval',
@@ -147,17 +138,45 @@ def main():
                 year='2012',
                 split='trainval',
                 data_dir=join(args.data_dir, 'VOCdevkit/VOC2012')
-                if args.data_dir != 'auto' else args.data_dir)),
-        Transform(model.coder, model.insize, model.mean))
-    train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
+                if args.data_dir != 'auto' else args.data_dir))
+        test = VOCBboxDataset(
+            year='2007',
+            split='test',
+            use_difficult=True,
+            return_difficult=True,
+            data_dir=join(args.data_dir, 'VOCdevkit/VOC2007')
+            if args.data_dir != 'auto' else args.data_dir)
 
-    test = VOCBboxDataset(
-        year='2007',
-        split='test',
-        use_difficult=True,
-        return_difficult=True,
-        data_dir=join(args.data_dir, 'VOCdevkit/VOC2007')
-        if args.data_dir != 'auto' else args.data_dir)
+        label_names = voc_bbox_label_names
+    elif args.dataset == 'coco':
+        # todo: use train+valminusminival(=coco2017train)
+        # https://github.com/chainer/chainercv/issues/651
+        train = COCOBboxDataset(data_dir=args.data_dir,
+                                split='train')
+        test = COCOBboxDataset(data_dir=args.data_dir, split='val')
+        label_names = coco_bbox_label_names
+
+    if args.model == 'ssd300':
+        model = SSD300(
+            n_fg_class=len(label_names), pretrained_model='imagenet')
+    elif args.model == 'ssd512':
+        model = SSD512(
+            n_fg_class=len(label_names), pretrained_model='imagenet')
+    elif args.model == 'fpn':
+        model = FPNSSD(
+            n_fg_class=len(label_names), pretrained_model='imagenet', init_scale=args.init_scale)
+
+    model.use_preset('evaluate')
+    train_chain = MultiboxTrainChain(model)
+    if args.gpu >= 0:
+        chainer.backends.cuda.get_device_from_id(args.gpu).use()
+        model.to_gpu()
+
+    train = TransformDataset(
+        train,
+        Transform(model.coder, model.insize, model.mean))
+    train_iter = chainer.iterators.MultithreadIterator(train, args.batchsize)
+
     test_iter = chainer.iterators.SerialIterator(
         test, args.batchsize, repeat=False, shuffle=False)
 
@@ -181,10 +200,10 @@ def main():
             test_iter,
             model,
             use_07_metric=True,
-            label_names=voc_bbox_label_names),
+            label_names=label_names),
         trigger=(10000, 'iteration'))
 
-    log_interval = 10, 'iteration'
+    log_interval = 100, 'iteration'
     trainer.extend(extensions.LogReport(trigger=log_interval))
     trainer.extend(extensions.observe_lr(), trigger=log_interval)
     trainer.extend(
