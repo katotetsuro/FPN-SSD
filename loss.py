@@ -7,13 +7,27 @@ import chainer.functions as F
 
 
 def focal_loss(x, t, alpha=0.25, gamma=2):
+    """
+    almost from:
+    https://github.com/ailias/Focal-Loss-implement-on-Tensorflow
+    adapt to chainer, use softmax instead of sigmoid
+    """
     xp = chainer.cuda.get_array_module(x)
-    one_hot = xp.eye(x.shape[-1])[t.array]
     p = F.softmax(x, axis=2)
-    pt = F.where(one_hot == 1, p, 1-p)
-    alpha = xp.where(one_hot == 1, alpha, 1-alpha)
-    losses = -F.sum(alpha * (1-pt)**gamma * F.log(pt), axis=2)
-    return F.mean(losses)
+    zeros = xp.zeros_like(p, dtype=p.dtype)
+
+    # For poitive prediction, only need consider front part loss, back part is 0;
+    # target_tensor > zeros <=> z=1, so poitive coefficient = z - p.
+    target_tensor = xp.eye(x.shape[-1])[t.array]
+    pos_p_sub = F.where(target_tensor > zeros, target_tensor - p, zeros)
+
+    # For negative prediction, only need consider back part loss, front part is 0;
+    # target_tensor > zeros <=> z=1, so negative coefficient = 0.
+    neg_p_sub = F.where(target_tensor > zeros, zeros, p)
+    per_entry_cross_ent = - alpha * (pos_p_sub ** gamma) * F.log(F.clip(p, 1e-8, 1.0)) \
+                          - (1 - alpha) * (neg_p_sub ** gamma) * \
+        F.log(F.clip(1.0 - p, 1e-8, 1.0))
+    return F.sum(per_entry_cross_ent)
 
 
 def multibox_loss(mb_locs, mb_confs, gt_mb_locs, gt_mb_labels, k):
