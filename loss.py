@@ -27,7 +27,7 @@ def focal_loss(x, t, alpha=0.25, gamma=2):
     per_entry_cross_ent = - alpha * (pos_p_sub ** gamma) * F.log(F.clip(p, 1e-8, 1.0)) \
                           - (1 - alpha) * (neg_p_sub ** gamma) * \
         F.log(F.clip(1.0 - p, 1e-8, 1.0))
-    return F.sum(per_entry_cross_ent)
+    return F.mean(F.sum(per_entry_cross_ent, axis=-1))
 
 
 def multibox_loss(mb_locs, mb_confs, gt_mb_locs, gt_mb_labels, k):
